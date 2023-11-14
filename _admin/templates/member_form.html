@@ -141,7 +141,7 @@
                     <input type="file" name="mb_img" id="mb_img">
                     {% if member.mb_img %}
                         <img src="/{{ member.mb_img|safe }}" title="{{ member.mb_id }}님 회원아이콘" target="_blank">
-                        <label><input type="checkbox" name="del_mb_icon" value="1" id="del_mb_icon"> 삭제</label>
+                        <label><input type="checkbox" name="del_mb_img" value="1" id="del_mb_img"> 삭제</label>
                     {% endif %}
                 </td>
             </tr>
