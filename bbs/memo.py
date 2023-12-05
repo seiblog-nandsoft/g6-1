@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Form, Path, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-
+from typing_extensions import Annotated
 from lib.common import *
 from common.database import get_db
 from common.models import Member, Memo
@@ -11,17 +11,65 @@ templates = UserTemplates()
 templates.env.filters["default_if_none"] = default_if_none
 templates.env.globals["captcha_widget"] = captcha_widget
 
+DBSession = Annotated[Session, Depends(get_db)]
+
+def get_kind_parameter(kind: Annotated[str, Query()] = "recv"):
+    """
+    kind 유효성 검사
+    """
+    if kind and kind not in ["recv", "send"]:
+        raise AlertCloseException("Invalid kind parameter", 400)
+    return kind
+
+
+def verification_token(request: Request, token: Annotated[str, Form()]):
+    """
+    토큰 검증
+    """
+    if not check_token(request, token):
+        raise AlertException("토큰이 유효하지 않습니다.", 403)
+    return token
+
+
+async def verification_recaptcha(request: Request, recaptcha_response: Annotated[str, Form(alias="g-recaptcha-response")]):
+    """
+    구글 reCAPTCHA 검증
+    """
+    config = request.state.config
+    captcha_cls = get_current_captcha_cls(config.cf_captcha)
+    if captcha_cls and (not await captcha_cls.verify(config.cf_recaptcha_secret_key, recaptcha_response)):
+        raise AlertException("캡차가 올바르지 않습니다.", 400)
+
+
+def ensure_member_login(request: Request, alert_close: bool = False) -> Member:
+    """
+    회원 로그인 여부 확인 및 로그인 회원 정보 반환
+    """
+    if not request.state.login_member:
+        message = "로그인 후 이용 가능합니다.1"
+        status_code = 403
+        if alert_close:
+            raise AlertCloseException(message, status_code)
+        else:
+            raise AlertException(message, status_code)
+    return request.state.login_member
+
+def get_member_login(request: Request) -> Union[Member, None]:
+    """회원 정보 반환"""
+    return request.state.login_member
+
 
 @router.get("/memo")
-def memo_list(request: Request, db: Session = Depends(get_db),
-                kind: str = Query(default="recv"),
-                current_page: int = Query(default=1, alias="page")):
+def memo_list(
+    request: Request,
+    db: DBSession,
+    kind: Annotated[str, Depends(get_kind_parameter)],
+    current_page: int = Query(1, alias="page", gt=0),
+):
     """
     쪽지 목록
     """
-    member = request.state.login_member
-    if not member:
-        raise AlertCloseException(status_code=403, detail="로그인 후 이용 가능합니다.")
+    member = ensure_member_login(request, alert_close=True)
 
     model = Memo
     join_model = Member
@@ -143,9 +191,10 @@ def memo_form(request: Request, db: Session = Depends(get_db),
 @router.post("/memo_form_update")
 async def memo_form_update(
     request: Request,
-    db: Session = Depends(get_db),
-    token: str = Form(...),
-    recaptcha_response: Optional[str] = Form(alias="g-recaptcha-response", default=""),
+    db: DBSession,
+    token: Annotated[str, Depends(verification_token)],
+    captcha: Annotated[str, Depends(verification_recaptcha)],
+    # recaptcha_response: Optional[str] = Form(alias="g-recaptcha-response", default=""),
     me_recv_mb_id : str = Form(...),
     me_memo: str = Form(...)
 ):
@@ -153,16 +202,16 @@ async def memo_form_update(
     쪽지 전송
     """
     config = request.state.config
-    member = request.state.login_member
-    if not member:
-        raise AlertCloseException(status_code=403, detail="로그인 후 이용 가능합니다.")
+    member = ensure_member_login(request, alert_close=True)
+    # if not member:
+    #     raise AlertCloseException(status_code=403, detail="로그인 후 이용 가능합니다.")
     
-    if not check_token(request, token):
-        raise AlertException(f"{token} : 토큰이 유효하지 않습니다. 새로고침후 다시 시도해 주세요.", 403)
+    # if not check_token(request, token):
+    #     raise AlertException(f"{token} : 토큰이 유효하지 않습니다. 새로고침후 다시 시도해 주세요.", 403)
 
-    captcha_cls = get_current_captcha_cls(config.cf_captcha)
-    if captcha_cls and (not await captcha_cls.verify(config.cf_recaptcha_secret_key, recaptcha_response)):
-        raise AlertException("캡차가 올바르지 않습니다.", 400)
+    # captcha_cls = get_current_captcha_cls(config.cf_captcha)
+    # if captcha_cls and (not await captcha_cls.verify(config.cf_recaptcha_secret_key, recaptcha_response)):
+    #     raise AlertException("캡차가 올바르지 않습니다.", 400)
 
     # me_recv_mb_id 공백 제거
     mb_id_list = me_recv_mb_id.replace(" ", "").split(',')
