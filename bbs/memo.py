@@ -31,7 +31,7 @@ def verification_token(request: Request, token: Annotated[str, Form()]):
     return token
 
 
-async def verification_recaptcha(request: Request, recaptcha_response: Annotated[str, Form(alias="g-recaptcha-response")]):
+async def verification_recaptcha(request: Request, recaptcha_response: Annotated[str, Form(alias="g-recaptcha-response")] = None):
     """
     구글 reCAPTCHA 검증
     """
@@ -188,12 +188,16 @@ def memo_form(request: Request, db: Session = Depends(get_db),
     return templates.TemplateResponse(f"{request.state.device}/memo/memo_form.html", context)
 
 
-@router.post("/memo_form_update")
+@router.post(
+    "/memo_form_update",
+    dependencies=[
+        Depends(verification_token),
+        Depends(verification_recaptcha)
+    ]
+)
 async def memo_form_update(
     request: Request,
     db: DBSession,
-    token: Annotated[str, Depends(verification_token)],
-    captcha: Annotated[str, Depends(verification_recaptcha)],
     # recaptcha_response: Optional[str] = Form(alias="g-recaptcha-response", default=""),
     me_recv_mb_id : str = Form(...),
     me_memo: str = Form(...)
