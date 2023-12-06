@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, File, Form, Path, Query, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from common.formclass import ContentForm
+from common.formclass import ContentData, ContentForm
 from common.database import get_db
 from lib.plugin.service import get_admin_plugin_menus, get_all_plugin_module_names
 from common.models import Content
 from lib.common import *
+from dataclasses import asdict
 
 router = APIRouter()
 templates = AdminTemplates()
@@ -65,12 +66,8 @@ def content_form_update(request: Request,
                         action: str = Form(...),
                         token: str = Form(...),
                         co_id: str = Form(...),
-                        form_data: ContentForm = Depends(),
-                        co_himg: UploadFile = File(None),
-                        co_timg: UploadFile = File(None),
-                        co_himg_del: int = Form(None),
-                        co_timg_del: int = Form(None),
-                        ):
+                        # form_data: ContentForm = Depends(),
+                        form_data: ContentForm = Depends()):
     """내용등록 및 수정 처리
 
     - 내용 등록 및 수정 데이터 저장
@@ -97,6 +94,9 @@ def content_form_update(request: Request,
     """
     if not check_token(request, token):
         raise AlertException("토큰이 유효하지 않습니다", 403)
+    
+    # Form Data => Content Data
+    content_data = create_dataclass_instance(form_data, ContentData)
 
     if action == "w":
         # ID 중복 검사
@@ -105,7 +105,7 @@ def content_form_update(request: Request,
             raise AlertException(status_code=400, detail=f"{co_id} : 내용 아이디가 이미 존재합니다.")
         
         # 내용 등록
-        content = Content(co_id=co_id, **form_data.__dict__)
+        content = Content(co_id=co_id, **content_data.__dict__)
         db.add(content)
         db.commit()
 
@@ -115,18 +115,18 @@ def content_form_update(request: Request,
             raise AlertException(status_code=404, detail=f"{co_id} : 내용 아이디가 존재하지 않습니다.")
 
         # 데이터 수정 후 commit
-        for field, value in form_data.__dict__.items():
+        for field, value in content_data.__dict__.items():
             setattr(content, field, value)
         db.commit()
 
     # 이미지 경로체크 및 생성
     make_directory(IMAGE_DIRECTORY)
     # 이미지 삭제
-    delete_image(IMAGE_DIRECTORY, f"{co_id}_h", co_himg_del)
-    delete_image(IMAGE_DIRECTORY, f"{co_id}_t", co_timg_del)
+    delete_image(IMAGE_DIRECTORY, f"{co_id}_h", form_data.co_himg_del)
+    delete_image(IMAGE_DIRECTORY, f"{co_id}_t", form_data.co_timg_del)
     # 이미지 저장
-    save_image(IMAGE_DIRECTORY, f"{co_id}_h", co_himg)
-    save_image(IMAGE_DIRECTORY, f"{co_id}_t", co_timg)
+    save_image(IMAGE_DIRECTORY, f"{co_id}_h", form_data.co_himg)
+    save_image(IMAGE_DIRECTORY, f"{co_id}_t", form_data.co_timg)
 
     
     return RedirectResponse(url=request.url_for('content_form_edit', co_id=co_id), status_code=302)
@@ -155,3 +155,21 @@ def content_delete(request: Request,
     db.commit()
 
     return RedirectResponse(url=request.url_for('content_list'), status_code=302)
+
+
+def create_dataclass_instance(source_instance: object, target_dataclass: object):
+    """Dataclass 인스턴스 생성
+    - source_instance 에서 target_dataclass 에 정의된 필드만 추출하여 인스턴스 생성
+    - 주로 폼 데이터를 데이터 클래스 인스턴스로 변환할 때 사용
+
+    Args:
+        source_instance (object): 폼 데이터
+        target_dataclass (object): 데이터 클래스 인스턴스
+
+    Returns:
+        object: 데이터 클래스 인스턴스
+    """
+    source_dict = asdict(source_instance)
+    valid_fields = {k: v for k, v in source_dict.items() if k in target_dataclass.__dataclass_fields__}
+
+    return target_dataclass(**valid_fields)

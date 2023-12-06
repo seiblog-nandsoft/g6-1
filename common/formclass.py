@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List
-from fastapi import Form
+from fastapi import File, Form, UploadFile
 
 
 @dataclass
@@ -352,7 +352,7 @@ class WriteCommentForm:
 
 
 @dataclass
-class ContentForm:
+class ContentData:
     co_subject: str = Form(...)
     co_content: str = Form(None)
     co_mobile_content: str = Form(None)
@@ -360,6 +360,12 @@ class ContentForm:
     co_skin: str = Form(None)
     co_mobile_skin: str = Form(None)
 
+@dataclass
+class ContentForm(ContentData):
+    co_himg: UploadFile = File(None),
+    co_timg: UploadFile = File(None),
+    co_himg_del: int = Form(None),
+    co_timg_del: int = Form(None),
 
 @dataclass
 class PollForm:
