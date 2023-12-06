@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, Enum, ForeignKey, Index, text, DateTime, Date, Time, Boolean, BIGINT, UniqueConstraint
-
+from sqlmodel import Field, SQLModel
 # TINYINT 대신 Integer 사용하기 바랍니다.
 # from sqlalchemy.dialects.mysql import TINYINT
 from sqlalchemy.orm import relationship
@@ -13,6 +13,15 @@ Base = declarative_base()
 if not DB_TABLE_PREFIX:
     DB_TABLE_PREFIX = "g6_"
 
+class Hero(SQLModel, table=True):
+
+    __tablename__ = DB_TABLE_PREFIX + "hero"
+
+    id: int = Field(default=None, primary_key=True)
+    name: str
+    secret_name: str
+
+SQLModel.metadata.create_all(engine)
 
 class Config(Base):
     """
