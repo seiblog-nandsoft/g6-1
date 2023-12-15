@@ -210,7 +210,7 @@ function textarea_increase(id, row)
     document.getElementById(id).rows += row;
 }
 
-// 글숫자 검사
+// 글숫자 바이트 검사
 function check_byte(content, target)
 {
     var i = 0;
@@ -227,6 +227,21 @@ function check_byte(content, target)
         }
     }
     // 숫자를 출력
+    document.getElementById(target).innerHTML = cnt;
+
+    return cnt;
+}
+
+// 문자열 길이
+function get_string_length(content, target)
+{
+    var cnt = 0;
+    var cont = document.getElementById(content).value;
+
+    for (let i=0; i<cont.length; i++) {
+        cnt += 1;
+    }
+    // 길이를 출력
     document.getElementById(target).innerHTML = cnt;
 
     return cnt;
