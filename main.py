@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from common.database import db_session
 import common.models as models
 from lib.common import *
-from lib.member_lib import member_check
+from lib.member_lib import check_member
 from lib.plugin.service import register_statics, register_plugin_admin_menu, get_plugin_state_change_time, \
     read_plugin_state, import_plugin_by_states, delete_router_by_tagname, cache_plugin_state, \
     cache_plugin_menu, register_plugin, unregister_plugin
@@ -160,7 +160,7 @@ async def main_middleware(request: Request, call_next):
     # 로그인
     if ss_mb_id:
         member = db.scalar(select(models.Member).filter_by(mb_id=ss_mb_id))
-        if member and member_check(config, member):
+        if member and check_member(config, member):
             # 최고관리자는 자동로그인 방지
             if config.cf_admin == member.mb_id:
                 is_super_admin = True
@@ -171,7 +171,7 @@ async def main_middleware(request: Request, call_next):
         cookie_mb_id = re.sub("[^a-zA-Z0-9_]", "", request_cookie_mb_id)[:20]
         if cookie_mb_id != config.cf_admin:  # 최고관리자 아이디라면 자동로그인 금지
             member = db.scalar(select(models.Member).filter_by(mb_id=cookie_mb_id))
-            if member and member_check(config, member):
+            if member and check_member(config, member):
                 ss_mb_key = session_member_key(request, member)
                 # 쿠키에 저장된 키와 여러가지 정보를 조합하여 만든 키가 일치한다면 로그인으로 간주
                 if request.cookies.get("ck_auto") == ss_mb_key:
