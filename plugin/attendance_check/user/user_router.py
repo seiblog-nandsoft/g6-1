@@ -11,7 +11,8 @@ from starlette.templating import Jinja2Templates
 
 from common.database import get_db
 from common.models import Member
-from lib.common import TEMPLATES_DIR, theme_asset, datetime_format, get_member_image, AlertException, validate_token
+from lib.common import TEMPLATES_DIR, theme_asset, datetime_format, get_member_image, AlertException, validate_token, \
+    number_format
 from ..models import AttendanceHistory, AttendanceConfig
 from ..plugin_config import module_name
 import calendar
@@ -21,9 +22,9 @@ router = APIRouter()
 PLUGIN_TEMPLATES_DIR = f"plugin/{module_name}/templates"
 templates = Jinja2Templates(directory=[TEMPLATES_DIR, PLUGIN_TEMPLATES_DIR])
 templates.env.globals["theme_asset"] = theme_asset
-templates.env.filters["datetime_format"] = datetime_format
 templates.env.globals["get_member_image"] = get_member_image
-
+templates.env.filters["datetime_format"] = datetime_format
+templates.env.filters["number_format"] = number_format
 
 @router.get("/show/{attendance_id}")  # date 없을때
 @router.get("/show/{attendance_id}/{date}")
