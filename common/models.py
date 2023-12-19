@@ -1,8 +1,9 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, Enum, ForeignKey, Index, text, DateTime, Date, Time, Boolean, BIGINT, UniqueConstraint
+from typing import List
 
 # TINYINT 대신 Integer 사용하기 바랍니다.
 # from sqlalchemy.dialects.mysql import TINYINT
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import ArgumentError, InvalidRequestError
 from datetime import datetime, date
@@ -241,6 +242,13 @@ class Member(Base):
     mb_9 = Column(String(255), nullable=False, default="")
     mb_10 = Column(String(255), nullable=False, default="")
 
+    auths: Mapped[List["Auth"]] = relationship("Auth", back_populates="member")
+    groups: Mapped[List["GroupMember"]] = relationship(back_populates="member")
+    points: Mapped[List["Point"]] = relationship("Point", back_populates="member")
+    socials: Mapped[List["MemberSocialProfiles"]] = relationship("MemberSocialProfiles", back_populates="member")
+    recv_memos: Mapped[List["Memo"]] = relationship("Memo", back_populates="recv_member", foreign_keys="Memo.me_recv_mb_id")
+    send_memos: Mapped[List["Memo"]] = relationship("Memo", back_populates="send_member", foreign_keys="Memo.me_send_mb_id")
+
 
 class Board(Base):
     """
@@ -348,7 +356,8 @@ class Board(Base):
     # 종속관계
     # writes = relationship("Write", backref="board")
     # 연관관계
-    group = relationship("Group")
+    # group = relationship("Group")
+    group: Mapped["Group"] = relationship("Group", back_populates="boards")
 
 
 class WriteBaseModel(Base):
@@ -457,22 +466,27 @@ class Group(Base):
     gr_9 = Column(String(255), nullable=False, default="")
     gr_10 = Column(String(255), nullable=False, default="")
     # 종속관계
-    # boards = relationship("Board", backref="group")
-    
+
+    boards: Mapped[List["Board"]] = relationship(back_populates="group")
+    members: Mapped[List["GroupMember"]] = relationship(back_populates="group")
+
 
 class GroupMember(Base):
     '''
     그룹회원 테이블
     '''    
     __tablename__ = DB_TABLE_PREFIX + "group_member"
-    
+
     gm_id = Column(Integer, primary_key=True, autoincrement=True)
-    gr_id = Column(String(10), nullable=False, default="")
-    mb_id = Column(String(20), nullable=False, default="")
+    gr_id = Column(String(10), ForeignKey(DB_TABLE_PREFIX + "group.gr_id"), nullable=False, default="")
+    mb_id = Column(String(20), ForeignKey(DB_TABLE_PREFIX + "member.mb_id"), nullable=False, default="")
     gm_datetime = Column(DateTime, nullable=False, default=datetime(1, 1, 1, 0, 0, 0))
-    
-    gr_id_index = Index("gr_id", gr_id)    
-    mb_id_index = Index("mb_id", mb_id)    
+
+    gr_id_index = Index("gr_id", gr_id)
+    mb_id_index = Index("mb_id", mb_id)
+
+    member: Mapped["Member"] = relationship(back_populates="groups")
+    group: Mapped["Group"] = relationship(back_populates="members")
 
 
 class Content(Base):
@@ -675,7 +689,7 @@ class Point(Base):
     __tablename__ = DB_TABLE_PREFIX + "point"
 
     po_id = Column(Integer, primary_key=True, autoincrement=True)
-    mb_id = Column(String(20), nullable=False, default="")
+    mb_id = Column(String(20), ForeignKey(DB_TABLE_PREFIX + "member.mb_id"), nullable=False, default="")
     po_datetime = Column(DateTime, nullable=False, default=datetime.now())
     po_content = Column(String(255), nullable=False, default="")
     po_point = Column(Integer, nullable=False, default=0)
@@ -687,6 +701,8 @@ class Point(Base):
     po_rel_id = Column(String(20), nullable=False, default="")
     po_rel_action = Column(String(100), nullable=False, default="")
 
+    member: Mapped["Member"] = relationship("Member", back_populates="points", lazy="joined")
+
 
 class Memo(Base):
     """
@@ -696,8 +712,8 @@ class Memo(Base):
     __tablename__ = DB_TABLE_PREFIX + "memo"
 
     me_id = Column(Integer, primary_key=True, autoincrement=True)
-    me_recv_mb_id = Column(String(20), nullable=False, default="")
-    me_send_mb_id = Column(String(20), nullable=False, default="")
+    me_recv_mb_id = Column(String(20), ForeignKey(DB_TABLE_PREFIX + "member.mb_id"), nullable=False, default="")
+    me_send_mb_id = Column(String(20), ForeignKey(DB_TABLE_PREFIX + "member.mb_id"), nullable=False, default="")
     me_send_datetime = Column(DateTime, nullable=False, default=datetime.now())
     me_read_datetime = Column(DateTime, nullable=True)
     me_memo = Column(Text, nullable=False)
@@ -706,8 +722,8 @@ class Memo(Base):
     me_send_ip = Column(String(100), nullable=False, default="")
 
     # 종속관계
-    # recv_member = relationship("Member", foreign_keys=[me_recv_mb_id])
-    # send_member = relationship("Member", foreign_keys=[me_send_mb_id])
+    recv_member: Mapped["Member"] = relationship("Member", back_populates="recv_memos", foreign_keys=[me_recv_mb_id])
+    send_member: Mapped["Member"] = relationship("Member", back_populates="send_memos", foreign_keys=[me_send_mb_id])
 
 
 class Popular(Base):
@@ -733,9 +749,11 @@ class Auth(Base):
     #   `au_auth` set('r','w','d') NOT NULL DEFAULT ''
     __tablename__ = DB_TABLE_PREFIX + "auth"
 
-    mb_id = Column(String(20), primary_key=True, nullable=False, default="")
+    mb_id = Column(String(20), ForeignKey(DB_TABLE_PREFIX + "member.mb_id"), primary_key=True, nullable=False, default="")
     au_menu = Column(String(20), primary_key=True, nullable=False, default="")
     au_auth = Column(String(255), nullable=False, default="")
+
+    member: Mapped["Member"] = relationship("Member", back_populates="auths")
 
 
 
@@ -770,16 +788,20 @@ class Poll(Base):
     mb_ids = Column(Text, nullable=False, default='')
     po_use = Column(Integer, nullable=False, default=1)
 
+    etcs: Mapped[List["PollEtc"]] = relationship("PollEtc", back_populates="poll")
+
 
 class PollEtc(Base):
     __tablename__ = DB_TABLE_PREFIX + "poll_etc"
 
     pc_id = Column(Integer, primary_key=True, autoincrement=True)
-    po_id = Column(Integer, nullable=False, default=0)
+    po_id = Column(Integer, ForeignKey(DB_TABLE_PREFIX + "poll.po_id"), nullable=False, default=0)
     mb_id = Column(String(20), nullable=False, default='')
     pc_name = Column(String(255), nullable=False, default='')
     pc_idea = Column(String(255), nullable=False, default='')
     pc_datetime = Column(DateTime, nullable=False, default=datetime.now())
+
+    poll: Mapped["Poll"] = relationship("Poll", back_populates="etcs")
 
 class AutoSave(Base):
     __tablename__ = DB_TABLE_PREFIX + "autosave"
@@ -901,7 +923,7 @@ class MemberSocialProfiles(Base):
     __tablename__ = DB_TABLE_PREFIX + "member_social_profiles"
 
     mp_id = Column(Integer, primary_key=True, autoincrement=True)
-    mb_id = Column(String(255), nullable=False, default="", comment="member.mb_id")
+    mb_id = Column(String(255), ForeignKey(DB_TABLE_PREFIX + "member.mb_id"), nullable=False, default="")
     provider = Column(String(50), nullable=False, default="")
     object_sha = Column(String(45), nullable=False, default="")
     identifier = Column(String(255), nullable=False, default="")
@@ -911,3 +933,5 @@ class MemberSocialProfiles(Base):
     description = Column(String(255), nullable=False, default="")
     mp_register_day = Column(DateTime, nullable=False, default=datetime(1, 1, 1, 0, 0, 0))
     mp_latest_day = Column(DateTime, nullable=False, default=datetime(1, 1, 1, 0, 0, 0))
+
+    member: Mapped["Member"] = relationship("Member", back_populates="socials")
