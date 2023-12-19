@@ -6,10 +6,10 @@
 {% endblock %}
 
 {% block title %}
-출석부
+출석판
 {% endblock title %}
 {% block subtitle %}
-출석부
+출석판
 {% endblock subtitle %}
 
 {% block content %}
@@ -24,8 +24,14 @@
         </colgroup>
         <tbody>
         <tr>
-            <th scope="row">출석부</th>
+            <th scope="row">출석판</th>
             <td>{{ attendance_config.title }}</td>
+        </tr>
+        <tr>
+            <th scope="row">포인트</th>
+            <td>
+                {{ attendance_config.point }}
+            </td>
         </tr>
         <tr>
             <th scope="row">시작 날짜</th>
@@ -48,7 +54,8 @@
         </tbody>
     </table>
 </div>
-<form name="ftodo" action="/admin/attendance/edit/{{ attendance_config.id }}" onsubmit="return frm_form_check(this);" method="get">
+<form name="ftodo" action="/admin/attendance/edit/{{ attendance_config.id }}" onsubmit="return frm_form_check(this);"
+      method="get">
     <input type="hidden" name="token" value="">
     <div class="btn_fixed_top">
         <a href="/admin/attendance/index" class="btn btn_02">목록</a>

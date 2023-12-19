@@ -12,7 +12,7 @@ from starlette.templating import Jinja2Templates
 from common.database import get_db
 from common.models import Member
 from lib.common import TEMPLATES_DIR, theme_asset, datetime_format, get_member_image, AlertException, validate_token, \
-    number_format
+    number_format, insert_point
 from ..models import AttendanceHistory, AttendanceConfig
 from ..plugin_config import module_name
 import calendar
@@ -26,6 +26,7 @@ templates.env.globals["get_member_image"] = get_member_image
 templates.env.filters["datetime_format"] = datetime_format
 templates.env.filters["number_format"] = number_format
 
+
 @router.get("/show/{attendance_id}")  # date 없을때
 @router.get("/show/{attendance_id}/{date}")
 async def show_attendance_check(
@@ -35,7 +36,7 @@ async def show_attendance_check(
         attendance_id: Optional[int] = None
 ):
     if not attendance_id:
-        raise AlertException("사용하지 않는 출석부 입니다", url='/')
+        raise AlertException("사용하지 않는 출석판 입니다", url='/')
 
     try:
         datetime.strptime(date, "%Y-%m-%d")
@@ -101,6 +102,17 @@ async def save_attendance_check(
 
     db.add(AttendanceHistory(mb_id=request.state.login_member.mb_id, attendance_config_id=attendance_id))
     db.commit()
+
+    attendance_config = db.scalar(select(AttendanceConfig).where(AttendanceConfig.id == attendance_id))
+    insert_point(
+        request,
+        request.state.login_member.mb_id,
+        attendance_config.point,
+        datetime.now().strftime('%Y-%m-%d') + "출석 체크",
+        AttendanceHistory.__tablename__,
+        request.state.login_member.mb_id,
+        "출석체크"
+    )
 
     return JSONResponse({"status": "success", "message": "출석체크 완료."}, status_code=200)
 
@@ -178,6 +190,7 @@ async def save_adttendance_comment(
         if not today_attendance.comment:
             today_attendance.comment = comment
             db.commit()
+
         return RedirectResponse(url=f'/attendance/show/{attendance_id}', status_code=302)
 
     # 출석체크
@@ -190,6 +203,17 @@ async def save_adttendance_comment(
     db.add(attendance_history)
     db.commit()
 
+    attendance_config = db.scalar(select(AttendanceConfig).where(AttendanceConfig.id == attendance_id))
+
+    insert_point(
+        request,
+        request.state.login_member.mb_id,
+        attendance_config.point,
+        datetime.now().strftime('%Y-%m-%d') + "출석 체크",
+        AttendanceHistory.__tablename__,
+        request.state.login_member.mb_id,
+        "출석체크"
+    )
     return RedirectResponse(url=f'/attendance/show/{attendance_id}', status_code=302)
 
 

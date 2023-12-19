@@ -24,12 +24,12 @@ def register_admin_menu():
             },
             {
                 "id": module_name + "1",  # 메뉴 아이디
-                "name": "출석부 추가",
+                "name": "출석판 추가",
                 "url": f"{admin_router_prefix}/create",
             },
             {
                 "id": module_name + "2",  # 메뉴 아이디
-                "name": "출석부 보기",
+                "name": "출석판 보기",
                 "url": f"{admin_router_prefix}/index",
             },
             {

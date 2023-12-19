@@ -8,7 +8,7 @@ from common.models import Member, Base
 
 
 class AttendanceConfig(Base):
-    """출석부 설정"""
+    """출석판 설정"""
     __tablename__ = DB_TABLE_PREFIX + "attendance_config"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(length=50), index=True)

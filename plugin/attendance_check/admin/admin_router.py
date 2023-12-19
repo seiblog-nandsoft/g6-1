@@ -63,13 +63,13 @@ async def edit_attendance_config(
         id: int,
         db: db_session
 ):
-    """출석부 설정 수정"""
+    """출석판 설정 수정"""
     request.session["menu_key"] = module_name
 
     attendance_config = db.scalar(select(AttendanceConfig).where(AttendanceConfig.id == id))
 
     if attendance_config is None:
-        raise AlertException("출석부 설정이 없습니다")
+        raise AlertException("출석판 설정이 없습니다")
 
     return templates.TemplateResponse(
         "admin/create.html", {
@@ -88,13 +88,13 @@ async def edit_attendance_config(
         end_date: str = Form(...),
         point: int = Form(...),
 ):
-    """출석부 설정 수정"""
+    """출석판 설정 수정"""
     request.session["menu_key"] = module_name
 
     attendance_config = db.scalar(select(AttendanceConfig).where(AttendanceConfig.id == id))
 
     if attendance_config is None:
-        raise AlertException("출석부가 없습니다")
+        raise AlertException("출석판가 없습니다")
 
     try:
         start_date = datetime.fromisoformat(start_date)
@@ -125,7 +125,7 @@ async def edit_attendance_config(
 async def edit_attendance_config(
         request: Request,
 ):
-    """출석부 설정 수정"""
+    """출석판 설정 수정"""
     request.session["menu_key"] = module_name
 
     return templates.TemplateResponse(
@@ -144,7 +144,7 @@ async def save_attendance_config(
         end_date: str = Form(...),
         point: int = Form(...),
 ):
-    """출석부 설정 저장"""
+    """출석판 설정 저장"""
     try:
         start_date = datetime.fromisoformat(start_date)
     except ValueError:
@@ -222,7 +222,7 @@ async def show_attendance_config(
 
     attendance_config = db.scalar(select(AttendanceConfig).where(AttendanceConfig.id == id))
     if attendance_config is None:
-        raise AlertException("출석부 설정이 없습니다")
+        raise AlertException("출석판 설정이 없습니다")
 
     return templates.TemplateResponse(
         "admin/show.html", {
