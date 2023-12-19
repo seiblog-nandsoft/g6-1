@@ -436,6 +436,7 @@
                     if (res.is_success) {
                         alert('출석 완료');
                     }
+                    document.location.reload();
                 },
                 error: function (request, status, error) {
                     alert('출석 실패');
