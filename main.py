@@ -8,11 +8,11 @@ from pydantic import TypeAdapter
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
-from user_agents import parse
 
 from common.database import db_session
 import common.models as models
 from lib.common import *
+from lib.member_lib import member_check
 from lib.plugin.service import register_statics, register_plugin_admin_menu, get_plugin_state_change_time, \
     read_plugin_state, import_plugin_by_states, delete_router_by_tagname, cache_plugin_state, \
     cache_plugin_menu, register_plugin, unregister_plugin
@@ -100,17 +100,17 @@ app.add_middleware(HTTPSRedirectMiddleware)
 # 요청마다 항상 실행되는 미들웨어
 @app.middleware("http")
 async def main_middleware(request: Request, call_next):
-    ### 미들웨어가 여러번 실행되는 것을 막는 코드 시작    
+    ### 미들웨어가 여러번 실행되는 것을 막는 코드 시작
     # 요청의 경로를 얻습니다.
     path = request.url.path
     # 경로가 정적 파일에 대한 것이 아닌지 확인합니다 (css, js, 이미지 등).
-    if path.startswith('/static') or path.endswith(('.css', '.js', '.jpg', '.png', '.gif', '.webp')):
+    if path.startswith('/static'): #or #path.endswith(('.css', '.js', '.jpg', '.png', '.gif', '.webp')):
         response = await call_next(request)
         return response
     ### 미들웨어가 여러번 실행되는 것을 막는 코드 끝
 
     db: Session = SessionLocal()
-    config = db.scalars(select(models.Config)).first()
+    config = db.scalar(select(models.Config))
     request.state.config = config
 
     member = None
@@ -118,9 +118,9 @@ async def main_middleware(request: Request, call_next):
     is_autologin = False
     ss_mb_id = request.session.get("ss_mb_id", "")
 
-    try:
-        # 관리자페이지 접근시
-        if path.startswith("/admin"):
+    # 관리자페이지 접근시
+    if path.startswith("/admin"):
+        try:
             if not ss_mb_id:
                 raise AlertException("로그인이 필요합니다.", 302, url="/bbs/login?url=" + path)
             elif not is_admin(request):
@@ -141,8 +141,8 @@ async def main_middleware(request: Request, call_next):
                     elif (method == "GET" and not "r" in au_auth):
                         raise AlertException("읽기 권한이 없습니다.", 302, url="/")
 
-    except AlertException as e:
-        return await alert_exception_handler(request, e)
+        except AlertException as e:
+            return await alert_exception_handler(request, e)
 
     if cache_plugin_state.__getitem__('change_time') != get_plugin_state_change_time():
         # 플러그인 상태변경시 캐시를 업데이트.
@@ -159,42 +159,45 @@ async def main_middleware(request: Request, call_next):
 
     # 로그인
     if ss_mb_id:
-        member = db.scalar(select(models.Member).filter_by(mb_id = ss_mb_id))
-        if member:
-            ymd_str = datetime.now().strftime("%Y-%m-%d")
-            if member.mb_intercept_date or member.mb_leave_date: # 차단 되었거나, 탈퇴한 회원이면 세션 초기화
-                request.session["ss_mb_id"] = ""
-                member = None
-            elif member.mb_today_login.strftime("%Y-%m-%d") != datetime.now().strftime("%Y-%m-%d"):  # 오늘 처음 로그인 이라면
-                # 첫 로그인 포인트 지급
-                insert_point(request, member.mb_id, config.cf_login_point, ymd_str + " 첫로그인", "@login", member.mb_id, ymd_str)
-                # 오늘의 로그인이 될 수도 있으며 마지막 로그인일 수도 있음
-                # 해당 회원의 접근일시와 IP 를 저장
-                member.mb_today_login = datetime.now()
-                member.mb_login_ip = request.client.host
-                db.commit()
-
-            # 최고관리자인지 확인
-            if member and config.cf_admin == member.mb_id:
+        member = db.scalar(select(models.Member).filter_by(mb_id=ss_mb_id))
+        if member and member_check(config, member):
+            # 최고관리자는 자동로그인 방지
+            if config.cf_admin == member.mb_id:
                 is_super_admin = True
     # 자동로그인
     else:
-        cookie_mb_id = request.cookies.get("ck_mb_id", "")
-        if cookie_mb_id:
-            cookie_mb_id = re.sub("[^a-zA-Z0-9_]", "", cookie_mb_id)[:20] # 쿠키에 저장된 아이디에서 영문자,숫자,_ 20글자 얻는다.
-        if cookie_mb_id and cookie_mb_id.lower() != config.cf_admin.lower(): # 최고관리자 아이디라면 자동로그인 금지
-            member = db.scalar(select(models.Member).filter_by(mb_id = cookie_mb_id))
-            if member and not (member.mb_intercept_date or member.mb_leave_date): # 차단 했거나 탈퇴한 회원이 아니면
-                # 메일인증을 사용하고 메일인증한 시간이 있다면, 년도만 체크하여 시간이 있음을 확인
-                if config.cf_use_email_certify and not is_none_datetime(member.mb_email_certify):
-                    ss_mb_key  = session_member_key(request, member)
-                    # 쿠키에 저장된 키와 여러가지 정보를 조합하여 만든 키가 일치한다면 로그인으로 간주
-                    if request.cookies.get("ck_auto") == ss_mb_key:
-                        request.session["ss_mb_id"] = cookie_mb_id
-                        is_autologin = True
+        request_cookie_mb_id = request.cookies.get("ck_mb_id", "")
+        # 쿠키에 저장된 아이디에서 영문자,숫자,_ 20글자 얻는다.
+        cookie_mb_id = re.sub("[^a-zA-Z0-9_]", "", request_cookie_mb_id)[:20]
+        if cookie_mb_id != config.cf_admin:  # 최고관리자 아이디라면 자동로그인 금지
+            member = db.scalar(select(models.Member).filter_by(mb_id=cookie_mb_id))
+            if member and member_check(config, member):
+                ss_mb_key = session_member_key(request, member)
+                # 쿠키에 저장된 키와 여러가지 정보를 조합하여 만든 키가 일치한다면 로그인으로 간주
+                if request.cookies.get("ck_auto") == ss_mb_key:
+                    request.session["ss_mb_id"] = cookie_mb_id
+                    is_autologin = True
 
+    # 로그인할 정보 없으면 세션삭제
+    if member is None:
+        request.session["ss_mb_id"] = ""
+    else:
+        # 오늘 처음 로그인 포인트 지급
+        ymd_str = datetime.now().strftime("%Y-%m-%d")
+        if (member.mb_today_login.strftime("%Y-%m-%d") != ymd_str
+                and not is_none_datetime(member.mb_today_login)):
+            insert_point(request, member.mb_id, config.cf_login_point, ymd_str + " 첫로그인",
+                         "@login", member.mb_id, ymd_str)
+            # 오늘의 로그인이 될 수도 있으며 마지막 로그인일 수도 있음
+            # 접근일시와 IP 를 저장
+            member.mb_today_login = datetime.now()
+            member.mb_login_ip = request.client.host
+            db.commit()
     db.close()
+
     request.state.is_super_admin = is_super_admin
+    # 로그인한 회원 정보
+    request.state.login_member = member
 
     # 접근가능/차단 IP 체크
     current_ip = request.client.host
@@ -232,31 +235,10 @@ async def main_middleware(request: Request, call_next):
         if request.state.is_mobile:
             request.state.device = "mobile"
 
-    # if 'SET_DEVICE' in globals():
-    #     if SET_DEVICE == 'mobile':
-    #         request.state.is_mobile = True
-    #         request.state.device = 'mobile'
-    # else:
-    #     user_agent = request.headers.get("User-Agent", "")
-    #     ua = parse(user_agent)
-    #     if 'USE_MOBILE' in globals() and USE_MOBILE:
-    #         if ua.is_mobile or ua.is_tablet: # 모바일과 태블릿에서 접속하면 모바일로 간주
-    #             request.state.is_mobile = True
-    #             request.state.device = 'mobile'
-                
-    # 로그인한 회원 정보
-    request.state.login_member = member
-
     # 에디터 전역변수
     request.state.editor = config.cf_editor
     request.state.use_editor = True if config.cf_editor else False
 
-    # request.state.context = {
-    #     # "request": request,
-    #     # "config": config,
-    #     # "member": member,
-    #     # "outlogin": outlogin.body.decode("utf-8"),
-    # }
     response = await call_next(request)
 
     if is_autologin:
@@ -271,8 +253,6 @@ async def main_middleware(request: Request, call_next):
         response.set_cookie('ck_visit_ip', vi_ip, max_age=86400)  # 쿠키를 하루 동안 유지
         # 접속 레코드 기록
         record_visit(request)
-        
-    # print("After request")
 
     return response
 
