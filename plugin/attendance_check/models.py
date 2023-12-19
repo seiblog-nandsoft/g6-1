@@ -1,12 +1,10 @@
 from datetime import datetime
 
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.orm import relationship
 
 from common.database import DB_TABLE_PREFIX
-
-Base = declarative_base()
+from common.models import Member, Base
 
 
 class AttendanceConfig(Base):
@@ -14,13 +12,10 @@ class AttendanceConfig(Base):
     __tablename__ = DB_TABLE_PREFIX + "attendance_config"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(length=50), index=True)
+    point = Column(Integer, nullable=False, default=0, comment='출석 포인트')
     start_date = Column(DateTime, nullable=False, default=datetime.now)
     end_date = Column(DateTime, nullable=True, default=None)
     created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now)
-
-    attendance_histories: Mapped["AttendanceHistory"] = relationship('AttendanceHistory',
-                                                                     back_populates='attendance_config')
 
 
 class AttendanceHistory(Base):
@@ -32,5 +27,6 @@ class AttendanceHistory(Base):
     comment = Column(Text(length=300))
     created_at = Column(DateTime, default=datetime.now)
 
-    attendance_config = relationship('AttendanceConfig', back_populates='attendance_histories')
-    # back_populates : 양방향 관계 설정
+    attendance_config = relationship('AttendanceConfig')
+    member = relationship(Member, innerjoin=True, primaryjoin='Member.mb_id==AttendanceHistory.mb_id',
+                          foreign_keys=Member.mb_id)

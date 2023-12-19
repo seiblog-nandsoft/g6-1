@@ -1,170 +1,7 @@
 {% extends "base.html" %}
 
 {% block head %}
-     <style>
-        .calendar_section {
-            display: inline-block;
-        }
-
-        @media (max-width: 820px) {
-            .calendar_section {
-                display: block;
-            }
-        }
-
-        @media (max-width: 1180px)  and   (orientation: landscape) {
-            .calendar_section {
-                display: block;
-            }
-        }
-
-        #attendance_list {
-            max-width: 705px;
-            margin: 0 auto;
-        }
-
-        .calendar_header {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            font-size: 1.8em;
-        }
-
-        .calendar_header_first_row {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-        }
-
-        .calendar_header_button {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            width: 100%;
-        }
-
-        #calendar_header_left_button, #calendar_header_right_button {
-            padding: 5px 15px;
-            margin: 1vh 0;
-            /*background-color: #5B9BD5;*/
-            /*background-color: #4d0585;*/
-            background-color: #5B9BD5;
-            color: #fff;
-        }
-
-        .attendance_statue {
-            font-size: 1.5rem;
-            text-align: center;
-        }
-
-        /* calendar_body_week */
-        #calendar_body_week {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 1.6rem;
-            font-size: 1.5rem;
-        }
-
-        #calendar_body_week div {
-            width: 14%;
-            text-align: center;
-            background-color: #4c73c7;
-            color: white;
-        }
-
-        #calendar_body {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-flow: wrap;
-        }
-
-        .calendar_body_item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: calc(100% / 7 - 2px);
-            min-height: 5.7em;
-            text-align: center;
-            margin-bottom: 1px;
-
-        }
-
-        .calendar_date {
-            height: 2rem;
-            font-size: 2rem;
-            margin-top: 5px;
-            color: #111;
-        }
-        
-        
-        .attendance_date_row {
-            height: 2rem;
-            padding-top: 0.2rem;
-            word-break: keep-all;
-            margin-top: 5px;
-            color: #111;
-        }
-
-        @media (max-width: 360px) {
-            .attendance_date_row {
-                font-size: 1.2rem;
-                margin-top: 5px;
-            }
-        }
-
-        .attendance_check_row {
-            font-size: 2rem;
-            height: 2rem;
-            -webkit-text-stroke-width: 0.5px;
-            -webkit-text-stroke-color: black;
-            font-weight: bold;
-            color: red;
-        }
-
-        #calendar_body div:nth-child(7n) > .calendar_date {
-            color: blue;
-        }
-
-        #calendar_body div:nth-child(7n+1) > .calendar_date {
-            color: red;
-        }
-
-        .calendar_even_row {
-            background-color: #00b8f8;
-        }
-
-        .count_text {
-            text-align: end;
-            min-width: 14px;
-            display: inline-block;
-        }
-
-        .icon_attendance, .icon_absent {
-            color: red;
-            margin-right: 12px;
-            font-style: normal;
-            display: inline-block;
-            text-align: center;
-            -webkit-text-stroke-width: 0.5px;
-            -webkit-text-stroke-color: black;
-            font-weight: bold;
-        }
-
-        .calendar_even_row {
-            background-color: rgb(207, 213, 234);
-        }
-
-        .calendar_odd_row {
-            background-color: rgb(233, 235, 245);
-        }
-
-
-    </style>
+<link rel="stylesheet" href="{{'/plugin/attendance_check/static/css/style.css' }}">
 {% endblock head %}
 
 {% block title %}
@@ -177,8 +14,6 @@
 {% block content %}
 
     <section class="calendar_section">
-        <div></div>
-        <div></div>
         <div id='attendance_list'>
             <div class='calendar_header'>
                 <div class="calendar_header_first_row">
@@ -190,14 +25,15 @@
                         <div><i class="icon_attendance">O</i>출석 수:&nbsp
                             <span id='attendance_count' class="count_text"></span>일
                         </div>
-                        <div><i class="icon_absent">X</i>결석 수:&nbsp<span id='absent_count' class="count_text"></span>일
-                        </div>
+                        <span class="sound_only" id="absent_count"></span>
+<!--                        <div><i class="icon_absent">X</i>결석 수:&nbsp<span id='absent_count' class="count_text"></span>일-->
+<!--                        </div>-->
                     </div>
                 </div>
-
+                
                 <div class="calendar_header_button">
                     <div id='calendar_header_left'>
-                        <button id='calendar_header_left_button'>이전달</button>
+                        <button id='calendar_header_left_button'>이전 달</button>
                     </div>
                     <div id='calendar_header_right'>
                         <button id='calendar_header_right_button'> 다음 달</button>
@@ -215,12 +51,9 @@
                     <div class='calendar_body_week_day'>금</div>
                     <div class='calendar_body_week_day'>토</div>
                 </div>
-                <div id='calendar_body'>
+                <div id='calendar_body' data-attendance-id="{{ request.path_params.attendance_id }}">
                 </div>
             </div>
-            
-            
-            
 
         </div>
     </section>
@@ -234,19 +67,14 @@
     <section id="bo_vc">
         <h2>댓글목록</h2>
         {% for comment in comments %}
-        {% set reply_depth=comment.wr_comment_reply|length %}
         <article id="c_{{ comment.id }}">
             <div class="pf_img"><img src="/{{ get_member_image(comment.mb_id) }}" alt="profile_image"></div>
             <div class="cm_wrap">
                 <header>
-                    <h2>{{ comment.name }}님의  댓글</h2>
+                    <h2>{{ comment.member[0].mb_nick }}님의  댓글</h2>
                         <span class="{% if comment.mb_id %}member{% else %}guest{% endif %}">
-                            {{ comment.name }}
+                            {{ comment.member[0].mb_nick }}
                         </span>
-                    {% if comment.ip %}
-                        <span class="sound_only">아이피</span>
-                        <span>({{ comment.ip }})</span>
-                    {% endif %}
                     <span class="sound_only">작성일</span>
                     <span class="bo_vc_hdinfo">
                         <i class="fa fa-clock-o" aria-hidden="true"></i>
@@ -261,42 +89,23 @@
                        {{ comment.comment }}
                     </p>
                 </div>
-                <span id="edit_{{ comment.wr_id }}" class="bo_vc_w"></span><!-- 수정 -->
-                <span id="reply_{{ comment.wr_id }}" class="bo_vc_w"></span><!-- 답변 -->
-                <textarea id="save_comment_{{ comment.wr_id }}" style="display:none">{{ comment.save_content|safe }}</textarea>
+<!--                <span id="edit_{{ comment.id }}" class="bo_vc_w"></span>&lt;!&ndash; 수정 &ndash;&gt;-->
+<!--                <span id="reply_{{ comment.id }}" class="bo_vc_w"></span>&lt;!&ndash; 답변 &ndash;&gt;-->
+                <textarea id="save_comment_{{ comment.id }}" style="display:none">{{ comment.save_content|safe }}</textarea>
             </div>
+            {% if request.state.is_super_admin or comment.mb_id == request.login_member %}
             <div class="bo_vl_opt">
                 <button type="button" class="btn_cm_opt btn_b01 btn">
                     <i class="fa fa-ellipsis-v" aria-hidden="true"></i>
                     <span class="sound_only">댓글 옵션</span>
                 </button>
+                
                 <ul class="bo_vc_act" style="display: none;">
-                    {% if comment.is_reply %}
-                    <li><a href="javascript:;" onclick="comment_box('{{ comment.wr_id }}', 'c'); return false;">답변</a></li>
-                    {% endif %}
-                    {% if comment.is_edit %}
-                    <li><a href="javascript:;" onclick="comment_box('{{ comment.wr_id }}', 'cu'); return false;">수정</a></li>
-                    {% endif %}
-                    {% if comment.is_del %}
-                    <li><a href="/board/delete_comment/{{ board.bo_table }}/{{ comment.wr_id }}" onclick="comment_delete(this.href); return false;">삭제</a></li>
-                    {% endif %}
+<!--                    <li><a href="javascript:;" onclick="comment_box('{{ comment.id }}', 'cu'); return false;">수정</a></li>-->
+                    <li><a href="/attendance/{{comment.attendance_config_id}}/delete_comment/{{ comment.id }}" onclick="comment_delete(this.href); return false;">삭제</a></li>
                 </ul>
             </div>
-            <script>
-                $(function() {			    
-                // 댓글 옵션창 열기
-                $(".btn_cm_opt").on("click", function(){
-                    $(this).parent("div").children(".bo_vc_act").show();
-                });
-                    
-                // 댓글 옵션창 닫기
-                $(document).mouseup(function (e){
-                    var container = $(".bo_vc_act");
-                    if( container.has(e.target).length === 0)
-                    container.hide();
-                });
-            });
-            </script>
+            {% endif %}
         </article>
         {% else %}
         <p id="bo_vc_empty">등록된 댓글이 없습니다.</p>
@@ -311,25 +120,21 @@
         
         <h2>댓글쓰기</h2>
             
-        <form name="fviewcomment" id="fviewcomment" action="{{ url_for('save_adttendance_comment') }}" 
+        <form name="fviewcomment" id="fviewcomment"
+              action="{{ url_for('save_adttendance_comment', attendance_id=request.path_params.attendance_id ) }}" 
               onsubmit="return fcomment_submit(this);" method="post" autocomplete="off">
             <input type="hidden" name="w" id="w" value="c">
-            <input type="hidden" name="id" value="{{ request.query_params.c_id }}" id="comment_id">
+            <input type="hidden" name="id" value="{{ request.query_params.id }}" id="comment_id">
             <input type="hidden" name="sca" value="{{ request.query_params.sca }}">
             <input type="hidden" name="sfl" value="{{ request.query_params.sfl }}">
             <input type="hidden" name="stx" value="{{ request.query_params.stx }}">
             <input type="hidden" name="spt" value="{{ request.query_params.spt }}">
             <input type="hidden" name="page" value="{{ request.query_params.page }}">
             <input type="hidden" name="token" value="">
-            
-            <strong id="char_cnt">
-                <span id="char_count">0</span>/1000
-            </strong>
-
 
             <span class="sound_only">내용</span>
             <textarea id="comment" name="comment" maxlength="1000" required="" class="required" 
-                      onkeydown="get_string_length('comment', 'char_count');" 
+                      onkeydown="" 
                       title="댓글 내용" placeholder="댓글내용을 입력해주세요"></textarea>
             <div class="bo_vc_w_wr">
                 <div class="bo_vc_w_info">
@@ -338,6 +143,7 @@
                     <button type="submit" id="btn_submit" class="btn_submit">댓글등록</button>
                 </div>
             </div>
+        </form>
             <script>
             $(document).on("keyup change", "textarea#comment[maxlength]", function() {
                 var str = $(this).val()
@@ -350,44 +156,36 @@
     
             // 글자수 제한
             var char_min = 1 // 최소
-            var char_max = parseInt({{ comment_max_length or 0 }}); // 최대
+            var char_max = 1000; // 최대
             
             var save_before = '';
-            // var save_html = document.getElementById('bo_vc_w').innerHTML;
             
             function fcomment_submit(f)
             {
-       
-                try {
-                    // 양쪽 공백 없애기
-                    document.getElementById('comment').value = document.getElementById('comment').value.trim();
-                    if (char_min > 0 || char_max > 0) {
-                        get_string_length('comment', 'char_count');
-                        var cnt = parseInt(document.getElementById('char_count').innerHTML);
-                        if (char_min > 0 && char_min > cnt) {
-                            alert("댓글은 "+char_min+"글자 이상 쓰셔야 합니다.");
-                            return false;
-                        } else if (char_max > 0 && char_max < cnt) {
-                            alert("댓글은 "+char_max+"글자 이하로 쓰셔야 합니다.");
-                            return false;
-                        }
-                    } else if (!document.getElementById('comment').value) {
-                        alert("댓글을 입력하여 주십시오.");
-                        return false;
-                    }
-        
-                    f.token.value = generate_token();
-                    if (f.token.value == "") {
-                        alert("토큰값이 없습니다.");
-                        return false;
-                    }
-        
-                    // document.getElementById("btn_submit").disabled = "disabled";
-        
-                    return true;
-                } catch(e) {
+                f.comment.value = f.comment.value.trim();
+                
+                if (f.comment.value.length > char_max) {
+                    alert("댓글은 " + char_max + "글자 이하로 입력해주세요.");
                     return false;
                 }
+                
+                if (f.comment.value.length < char_min) {
+                    alert("댓글은 " + char_min + "글자 이상 입력해주세요.");
+                    return false;
+                }
+                
+                if (!f.comment.value) {
+                    alert("댓글을 입력하여 주십시오.");
+                    return false;
+                }
+    
+                f.token.value = generate_token();
+                if (f.token.value == "") {
+                    alert("토큰값이 없습니다.");
+                    return false;
+                }    
+                return true;
+                
             }
     
             function comment_box(comment_id, work)
@@ -398,10 +196,9 @@
     
                 // 댓글 아이디가 넘어오면 답변, 수정
                 if (comment_id) {
-                    if (work == 'c')
-                        el_id = 'reply_' + comment_id;
-                    else
+                    if (work == 'cu') {
                         el_id = 'edit_' + comment_id;
+                    }
                 } else {
                     el_id = 'bo_vc_w';
                 }
@@ -422,12 +219,9 @@
                     if (work == 'cu')
                     {
                         document.getElementById('comment').value = document.getElementById('save_comment_' + comment_id).value;
-                        if (typeof char_count != 'undefined')
+                        if (typeof char_count != 'undefined') {
                             get_string_length('comment', 'char_count');
-                        if (document.getElementById('secret_comment_'+comment_id).value)
-                            document.getElementById('wr_secret').checked = true;
-                        else
-                            document.getElementById('wr_secret').checked = false;
+                        }
                     }
     
                     document.getElementById('comment_id').value = comment_id;
@@ -452,12 +246,29 @@
             comment_box('', 'c');
     
         </script>
-        </form>
     </aside>
+    {% else %}
+    <div>
+        <p>출석체크를 하시려면 로그인을 해주세요.</p>
+    </div>
     {% endif %}
+    
 
     <!-- } 댓글 쓰기 끝 -->
     <script>
+        $(function() {			    
+            // 댓글 옵션창 열기
+            $(".btn_cm_opt").on("click", function(){
+                $(this).parent("div").children(".bo_vc_act").show();
+            });
+                
+            // 댓글 옵션창 닫기
+            $(document).mouseup(function (e){
+                var container = $(".bo_vc_act");
+                if( container.has(e.target).length === 0)
+                container.hide();
+            });
+        });
 
         const today = new Date();
         let year = today.getFullYear();
@@ -482,8 +293,9 @@
         init();
 
         function init() {
-            get_attendance_list(year, month);
+            get_attendance_check_list(year, month);
             calendar_render(attendance_list);
+            
             set_calendar_header();
 
             const next_month = document.querySelector('#calendar_header_right_button');
@@ -491,6 +303,44 @@
 
             next_month.addEventListener('click', show_next_month);
             prev_month.addEventListener('click', show_prev_month);
+            add_event_calendar_body();
+        }
+        
+        function add_event_calendar_body() {
+            calendar_body_item = document.querySelectorAll('.calendar_body_item');
+            calendar_body_item.forEach(function (item) {
+                item.addEventListener('click', function (e) {
+                    let calendar_date = ''
+                    if (e.target.querySelector('.calendar_date') != null) {
+                        calendar_date = e.target.querySelector('.calendar_date').innerText;
+                    }
+                    else if (e.target.classList.contains('calendar_date')){
+                        calendar_date = e.target.innerText;
+                    } else {
+                        calendar_date_node = e.target.querySelector('.calendar_date')
+                        if (calendar_date_node != null) {
+                            calendar_date = calendar_date.innerText;
+                        }
+                    }
+                
+                    if (calendar_date == null || calendar_date == '' || calendar_date.innerText == '') {
+                        return;
+                    }
+                    const date = calendar_date.innerText;
+                    const attendance_date = new Date(calendar_config.year, calendar_config.month - 1, calendar_date);
+                    if (new Date().toDateString() != attendance_date.toDateString()) {
+                        alert('오늘 날짜만 출석체크가 가능합니다');
+                        return;
+                    }
+                    if (isValidDate(attendance_date)) {
+                        attendance_check(attendance_date);
+                    }
+                });
+            });
+        }
+        
+        function isValidDate(date) {
+          return date instanceof Date && !isNaN(date);
         }
 
         /**
@@ -516,13 +366,12 @@
             }
         }
 
-        function show_next_month() { 
+        function show_next_month() {
+            // 다음년도 1월로 넘어가지 않게
             if((today.getFullYear() < calendar_config.year + 1) && (today.getMonth() + 1 < calendar_config.month + 1)) {
                 return false;
             }
             set_month(1);
-            
-            
             set_calendar_header();
             calendar_render(attendance_list);
         }
@@ -540,33 +389,57 @@
             calendar_header_center_month.innerText = calendar_config.month;
         }
 
-        function get_attendance_list(year, month) {
+        function get_attendance_check_list(year, month) {
+            calendar_body = document.getElementById('calendar_body');
+            attendance_id = calendar_body.getAttribute('data-attendance-id');  
             $.ajax({
-                url: g5_url + '/main/community/attendance_check.php',
+                url: g5_url + 'attendance/ajax/'+ attendance_id +'/info',
                 type: 'post',
                 data: JSON.stringify({
-                    mode: 'get_attendance_list',
+                    mode: 'get_attendance_check_list',
                     first_day_ymd: year + '-' + month + '-01',
                 }),
                 async: false,
                 dataType: 'json',
                 success: function (res) {
-                    if (res.is_success) {
-                        let attendance_data = res.attendance_list;
-                        for (let i = 0; i < attendance_data.length; i++) {
-                            let attendance = attendance_data[i];
-                            let attendance_date = new Date(attendance.attendance_time);
-                            let data = {
-                                attendance_time: attendance_date,
-                            };
-                            attendance_list.push(data)
-                        }
+                    let attendance_data = res.data.attendance
+                    for (let i = 0; i < attendance_data.length; i++) {
+                        let attendance = attendance_data[i];
+                        let attendance_date = new Date(attendance.check_time);
+                        let data = {
+                            attendance_time: attendance_date,
+                        };
+                        attendance_list.push(data);
                     }
+                    console.log(attendance_list);
+                    
                 },
                 error: function (request, status, error) {
                     return [];
                 }
 
+            });
+        }
+        
+        function attendance_check(today){
+            //출석체크
+            calendar_body = document.getElementById('calendar_body');
+            attendance_id = calendar_body.getAttribute('data-attendance-id');  
+            $.ajax({
+                url: g5_url + 'attendance/ajax/'+ attendance_id +'/check',
+                type: 'post',
+                data: JSON.stringify({
+                    'today': today,
+                }),
+                dataType: 'json',
+                success: function (res) {
+                    if (res.is_success) {
+                        alert('출석 완료');
+                    }
+                },
+                error: function (request, status, error) {
+                    alert('출석 실패');
+                }
             });
         }
 
@@ -651,7 +524,6 @@
                 div.appendChild(inner_div_middle);
                 div.appendChild(inner_div_bottom);
                 
-                
                 calendar_body.appendChild(div);
                 count_item++
             }
@@ -695,7 +567,7 @@
                     attendance_count++;
                 } else if (comparing_target_time < current_time) {
                     calendar_day_item[i].querySelector('.attendance_check_row').innerText = 'x';
-                    calendar_day_item[i].querySelector('.attendance_date_row').innerText += '결석';
+                    calendar_day_item[i].querySelector('.attendance_date_row').innerText += '';
                     absent_count++;
                 }
             }
@@ -707,7 +579,6 @@
             absent_count_tag.innerText = absent_count;
 
             /**
-             *
              * @param attendance_list array
              * @param year fullYear string
              * @param month string
@@ -717,7 +588,8 @@
             function check_attendance_day(attendance_list, year, month, date) {
                 for (let j = 0; j < attendance_list.length; j++) {
                     let calendar_day = attendance_list[j].attendance_time;
-                    if (year == calendar_day.getFullYear() && month == (calendar_day.getMonth() + 1) && date == calendar_day.getDate()) {
+                    if (year == calendar_day.getFullYear() && month == (calendar_day.getMonth() + 1) 
+                    && date == calendar_day.getDate()) {
                         return calendar_day.getHours() + ':' + calendar_day.getMinutes()
                     }
                 }

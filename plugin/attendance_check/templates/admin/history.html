@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block head %}
+
+{# css, js 경로 /plugin/플러그인 모듈이름/static/파일경로 #}
+
+{% endblock %}
+
+{% block title %}
+출석부
+{% endblock title %}
+{% block subtitle %}
+출석부
+{% endblock subtitle %}
+
+{% block content %}
+<h1 id="container_title">출석기록</h1>
+<div class="container_wr">
+    <div class="local_ov01 local_ov">
+        <a href="/admin/attendance/history" class="ov_listall">처음</a>    
+        <span class="btn_ov01">
+            <span class="ov_txt">전체 출석부</span>
+            <span class="ov_num"> {{ total_count }}개</span>
+        </span>
+    </div>
+    
+    <form name="fsearch" id="fsearch" class="local_sch01 local_sch" method="get" autocomplete="off">
+        <label for="sfl" class="sound_only">검색대상</label>
+        <select name="sfl" id="sfl">
+            <option value="title" {{ get_selected('title', request.state.sfl if request.state.sfl else '' )}}>출석부 제목</option>
+            <option value="mb_id" {{ get_selected('mb_id', request.state.sfl if request.state.sfl else '' )}}>회원 ID</option>
+            <option value="created_at" {{ get_selected('created_at', request.state.sfl if request.state.sfl else '' )}}>출석 날짜</option>
+        </select>
+        <label for="stx" class="sound_only">검색어<strong class="sound_only"> 필수</strong></label>
+        <input type="text" name="stx" id="stx" value="{{ request.state.stx if request.state.stx else '' }}" required class="required frm_input">
+        <input type="submit" value="검색" class="btn_submit">
+    </form>
+    
+    <form method="post" name="fattendance_list" id="fattendance_list" action="/admin/attendance/history_list_update" 
+          onsubmit="return fattendance_list_submit(this);" autocomplete="off">
+    <input type="hidden" name="sst" value="{{ request.state.sst }}">
+    <input type="hidden" name="sod" value="{{ request.state.sod }}">
+    <input type="hidden" name="sfl" value="{{ request.state.sfl }}">
+    <input type="hidden" name="stx" value="{{ request.state.stx }}">
+    <input type="hidden" name="page" value="{{ request.state.page }}">
+    <input type="hidden" name="token" value="">
+
+    <div class="tbl_head01 tbl_wrap">
+        <table>
+            <caption>게시판그룹설정 목록</caption>
+            <thead>
+            <tr>
+                <th scope="col">
+                    <label for="chkall" class="sound_only">그룹 전체</label>
+                    <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
+                </th>
+                <th scope="col"><a>{{ subject_sort_link(request, 'title')|safe }}출석부 제목</a></th>
+                <th scope="col">회원 ID</th>
+                <th scope="col">출석 댓글</th>
+                <th scope="col">출석 날짜</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for attendance_history in attendance_histories %}
+            <tr class="bg">
+                <td class="td_chk">
+                    <input type="hidden" name="attendance_history[]" value="{{ attendance_history.id }}">
+                    <input type="checkbox" name="chk[]" value="{{ attendance_history.id }}"
+                           id="chk_{{ attendance_history.id }}">
+                </td>
+                <td class="td_left">
+                    {{ attendance_history.attendance_config.title }}
+                </td>
+                <td class="td_input">
+                    {{ attendance_history.mb_id }}
+                </td>
+                <td class="td_input">
+                    {{ attendance_history.comment }}
+                </td>
+                <td class="td_datetime">
+                    {{ attendance_history.created_at }}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if not attendance_histories %}
+            <tr>
+                <td colspan="10">자료가 없습니다.</td>
+            </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <div class="local_desc01 local_desc">
+        <p>안내 사항</p>
+        출석만 하고 출석 댓글이 없을경우 출석댓글은 빈칸으로 표시됩니다.
+    </div>
+    {{ paging|safe }}
+
+</form>
+</div>
+{% endblock content %}

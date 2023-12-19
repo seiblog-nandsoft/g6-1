@@ -6,10 +6,10 @@
 {% endblock %}
 
 {% block title %}
-할일
+출석부
 {% endblock title %}
 {% block subtitle %}
-할일
+출석부
 {% endblock subtitle %}
 
 {% block content %}
@@ -24,34 +24,34 @@
         </colgroup>
         <tbody>
         <tr>
-            <th scope="row">제목</th>
-            <td>{{ todo.title }}</td>
+            <th scope="row">출석부</th>
+            <td>{{ attendance_config.title }}</td>
         </tr>
         <tr>
-            <th scope="row">내용</th>
+            <th scope="row">시작 날짜</th>
             <td>
-                {{ todo.content }}
+                {{ attendance_config.start_date }}
             </td>
         </tr>
         <tr>
-            <th scope="row">완료</th>
+            <th scope="row">종료 날짜</th>
             <td>
-                {{ 'V' if todo.is_done else 'X' }}
+                {{ attendance_config.end_date }}
             </td>
         </tr>
         <tr>
-            <th scope="row">등록 시간</th>
+            <th scope="row">등록 날짜</th>
             <td>
-                {{ todo.created_at }}
+                {{ attendance_config.created_at }}
             </td>
         </tr>
         </tbody>
     </table>
 </div>
-<form name="ftodo" action="/admin/todo/update/{{ todo.id }}" onsubmit="return frm_form_check(this);" method="get">
+<form name="ftodo" action="/admin/attendance/edit/{{ attendance_config.id }}" onsubmit="return frm_form_check(this);" method="get">
     <input type="hidden" name="token" value="">
     <div class="btn_fixed_top">
-        <a href="/admin/todo/todos" class="btn btn_02">목록</a>
+        <a href="/admin/attendance/index" class="btn btn_02">목록</a>
         <input type="submit" value="수정" class="btn btn_submit" accesskey="s">
     </div>
 </form>

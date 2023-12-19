@@ -6,13 +6,15 @@ from fastapi.params import Depends, Form
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.requests import Request
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, JSONResponse
 from starlette.templating import Jinja2Templates
 
 from common.database import get_db
-from lib.common import TEMPLATES_DIR, theme_asset, datetime_format, get_member_image, AlertException
+from common.models import Member
+from lib.common import TEMPLATES_DIR, theme_asset, datetime_format, get_member_image, AlertException, validate_token
 from ..models import AttendanceHistory, AttendanceConfig
 from ..plugin_config import module_name
+import calendar
 
 router = APIRouter()
 
@@ -25,7 +27,7 @@ templates.env.globals["get_member_image"] = get_member_image
 
 @router.get("/show/{attendance_id}")  # date 없을때
 @router.get("/show/{attendance_id}/{date}")
-def show_attendance_check(
+async def show_attendance_check(
         request: Request,
         db: Session = Depends(get_db),
         date: str = '',
@@ -46,9 +48,15 @@ def show_attendance_check(
     if not attendance_config:
         raise AlertException("출석기간이 아닙니다.")
 
-    comments = db.scalars(select(AttendanceHistory).where(
+    comments = db.scalars(select(AttendanceHistory, Member.mb_nick)
+    .join(Member, AttendanceHistory.mb_id == Member.mb_id)
+    .where(
         AttendanceHistory.attendance_config_id == attendance_config.id,
-        AttendanceHistory.created_at.between(f'{date} 00:00:00', f'{date} 23:59:59'))).all()
+
+        AttendanceHistory.comment != '',
+        AttendanceHistory.created_at.between(f'{date} 00:00:00', f'{date} 23:59:59'))
+
+    ).all()
 
     if not comments:
         comments = []
@@ -65,12 +73,15 @@ def show_attendance_check(
     )
 
 
-@router.get("/{attendance_id}/check")
-def save_attendance_check(
+@router.post("/ajax/{attendance_id}/check")
+async def save_attendance_check(
         request: Request,
         attendance_id: Optional[int] = None,
         db: Session = Depends(get_db)
 ):
+    """
+    출석체크 api
+    """
     if not attendance_id:
         raise AlertException("유효한 요청이 아닙니다.", url='/', status_code=400)
 
@@ -80,20 +91,62 @@ def save_attendance_check(
             AttendanceHistory.attendance_config_id == attendance_id,
             AttendanceHistory.created_at.between(
                 f'{datetime.strftime(datetime.now(), "%Y-%m-%d")} 00:00:00',
-                f'{datetime.strftime(datetime.now(), "%Y-%m-%d")} 23:59:59'))
+                f'{datetime.strftime(datetime.now(), "%Y-%m-%d")} 23:59:59')
+        )
     )
 
     if today_attendance:
-        raise AlertException("이미 출석하셨습니다.")
+        return JSONResponse({"status": "error", "message": "이미 출석체크를 하셨습니다."}, status_code=400)
 
-    db.add(AttendanceHistory(mb_id=request.state.login_member.mb_id))
+    db.add(AttendanceHistory(mb_id=request.state.login_member.mb_id, attendance_config_id=attendance_id))
     db.commit()
 
-    return RedirectResponse(url='/attendance/show')
+    return JSONResponse({"status": "success", "message": "출석체크 완료."}, status_code=200)
 
 
-@router.post("/save_comment")
-def save_adttendance_comment(
+@router.post("/ajax/{attendance_id}/info")
+async def save_attendance_check(
+        request: Request,
+        attendance_id: Optional[int] = None,
+        db: Session = Depends(get_db)
+):
+    """
+    출석체크 한달목록 출력 api
+    """
+
+    if not attendance_id:
+        raise AlertException("유효한 요청이 아닙니다.", url='/', status_code=400)
+
+    today = datetime.today()
+
+    first_date_of_month = today.replace(day=1)
+    res = calendar.monthrange(today.year, today.month)
+    last_date_of_month = datetime(today.year, today.month, res[1])
+
+    attendance_histories = db.scalars(
+        select(AttendanceHistory).where(
+            AttendanceHistory.mb_id == request.state.login_member.mb_id,
+            AttendanceHistory.attendance_config_id == attendance_id,
+            AttendanceHistory.created_at.between(
+                f'{datetime.strftime(first_date_of_month, "%Y-%m-%d")} 00:00:00',
+                f'{datetime.strftime(last_date_of_month, "%Y-%m-%d")} 23:59:59')
+        )
+    ).all()
+
+    attendace_list = {
+        'attendance': [],
+    }
+    for data in attendance_histories:
+        item = {
+            'check_time': data.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        attendace_list['attendance'].append(item)
+
+    return JSONResponse({"status": "success", "data": attendace_list}, status_code=200)
+
+
+@router.post("/save_comment/{attendance_id}", dependencies=[Depends(validate_token)])
+async def save_adttendance_comment(
         request: Request,
         db: Session = Depends(get_db),
         attendance_id: Optional[int] = None,
@@ -103,7 +156,13 @@ def save_adttendance_comment(
         raise AlertException("유효한 요청이 아닙니다.", url='/', status_code=400)
 
     if not comment:
-        return RedirectResponse(url='/attendance_check/check')
+        return AlertException("댓글이 없습니다.", url='/', status_code=400)
+
+    config = request.state.config
+    if comment in config.cf_filter:
+        return AlertException("금지어가 포함되어 있습니다.", url='/', status_code=400)
+
+    # 유효성검사 끝
 
     today_attendance = db.scalar(
         select(AttendanceHistory).where(
@@ -112,28 +171,39 @@ def save_adttendance_comment(
                 f'{datetime.strftime(datetime.now(), "%Y-%m-%d")} 00:00:00',
                 f'{datetime.strftime(datetime.now(), "%Y-%m-%d")} 23:59:59'))
     )
+
+    # 출석체크만 하고 댓글 없을 경우
     if today_attendance:
-        today_attendance.comment = comment
+        if not today_attendance.comment:
+            today_attendance.comment = comment
+            db.commit()
+        return RedirectResponse(url=f'/attendance/show/{attendance_id}', status_code=302)
 
-    else:
-        db.add(AttendanceHistory(mb_id=request.state.login_member.mb_id, comment=comment))
+    # 출석체크
+    attendance_history = AttendanceHistory(
+        attendance_config_id=attendance_id,
+        mb_id=request.state.login_member.mb_id,
+        comment=comment
+    )
 
+    db.add(attendance_history)
     db.commit()
 
-    return RedirectResponse(url='/attendance/check')
+    return RedirectResponse(url=f'/attendance/show/{attendance_id}', status_code=302)
 
 
-@router.post("/delete_comment")
-def delete_adttendance_comment(
+@router.get("/{attendance_id}/delete_comment/{comment_id}", dependencies=[Depends(validate_token)])
+async def delete_adttendance_comment(
         request: Request,
         attendance_id: Optional[int] = None,
+        comment_id: Optional[int] = None,
 
         db: Session = Depends(get_db)
 ):
     """
     출석기록은 그대로 두고 코멘트만 지우기
     """
-    if not attendance_id:
+    if not attendance_id or not comment_id:
         raise AlertException("유효한 요청이 아닙니다.", url='/', status_code=400)
 
     today_attendance = db.scalar(
@@ -145,7 +215,6 @@ def delete_adttendance_comment(
     )
     if today_attendance:
         today_attendance.comment = ''
+        db.commit()
 
-    db.commit()
-
-    return RedirectResponse(url='/attendance/check')
+    return RedirectResponse(url=f'/attendance/show/{attendance_id}', status_code=302)

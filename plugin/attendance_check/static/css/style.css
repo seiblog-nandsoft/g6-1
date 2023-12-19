@@ -1,0 +1,154 @@
+     <style>
+        .calendar_section {
+            display: inline-block;
+        }
+
+        #attendance_list {
+            max-width: 705px;
+            margin: 0 auto;
+        }
+
+        .calendar_header {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            font-size: 1.8em;
+        }
+
+        .calendar_header_first_row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+
+        .calendar_header_button {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        #calendar_header_left_button, #calendar_header_right_button {
+            padding: 5px 15px;
+            margin: 1vh 0;
+            background-color: #5B9BD5;
+            color: #fff;
+        }
+
+        .attendance_statue {
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        /* calendar_body_week */
+        #calendar_body_week {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 1.6rem;
+            font-size: 1.5rem;
+        }
+
+        #calendar_body_week div {
+            width: 14%;
+            text-align: center;
+            background-color: #4c73c7;
+            color: white;
+        }
+
+        #calendar_body {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-flow: wrap;
+        }
+
+        .calendar_body_item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: calc(100% / 7 - 2px);
+            min-height: 5.7em;
+            text-align: center;
+            margin-bottom: 1px;
+        }
+        
+        .calendar_body_item:hover {
+            background-color: #4c73c7;
+            color: white;
+            cursor: pointer;
+        }
+
+        .calendar_date {
+            height: 2rem;
+            font-size: 2rem;
+            margin-top: 5px;
+            color: #111;
+        }
+        
+        
+        .attendance_date_row {
+            height: 2rem;
+            padding-top: 0.2rem;
+            word-break: keep-all;
+            margin-top: 5px;
+            color: #111;
+        }
+
+        @media (max-width: 360px) {
+            .attendance_date_row {
+                font-size: 1.2rem;
+                margin-top: 5px;
+            }
+        }
+
+        .attendance_check_row {
+            font-size: 2rem;
+            height: 2rem;
+            -webkit-text-stroke-width: 0.5px;
+            -webkit-text-stroke-color: black;
+            font-weight: bold;
+            color: red;
+        }
+
+        #calendar_body div:nth-child(7n) > .calendar_date {
+            color: blue;
+        }
+
+        #calendar_body div:nth-child(7n+1) > .calendar_date {
+            color: red;
+        }
+
+        .calendar_even_row {
+            background-color: #00b8f8;
+        }
+
+        .count_text {
+            text-align: end;
+            min-width: 14px;
+            display: inline-block;
+        }
+
+        .icon_attendance, .icon_absent {
+            color: red;
+            margin-right: 12px;
+            font-style: normal;
+            display: inline-block;
+            text-align: center;
+            -webkit-text-stroke-width: 0.5px;
+            -webkit-text-stroke-color: black;
+            font-weight: bold;
+        }
+
+        .calendar_even_row {
+            background-color: rgb(207, 213, 234);
+        }
+
+        .calendar_odd_row {
+            background-color: rgb(233, 235, 245);
+        }
+
+    </style>

@@ -30,8 +30,13 @@ def register_admin_menu():
             {
                 "id": module_name + "2",  # 메뉴 아이디
                 "name": "출석부 보기",
-                "url": f"{admin_router_prefix}/config",
+                "url": f"{admin_router_prefix}/index",
             },
+            {
+                "id": module_name + "3",
+                "name": "출석기록",
+                "url": f"{admin_router_prefix}/history",
+            }
         ]
     }
     return admin_menu

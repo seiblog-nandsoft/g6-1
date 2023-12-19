@@ -5,7 +5,6 @@ __all__ = [
     "user",
 ]
 
-
 from .admin import register_admin_menu, register_admin_router
 from .user import register_user_router
 
@@ -14,7 +13,6 @@ def register_plugin():
     """
     register_admin_router()
     register_user_router()
-    # register_event()
     # 그밖에 필요한 작업 추가하세요
 
 

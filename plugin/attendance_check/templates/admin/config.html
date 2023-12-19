@@ -1,10 +1,111 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block head %}
+{# css, js 경로 /plugin/플러그인 모듈이름/static/파일경로 #}
+{% endblock %}
 
-</body>
-</html>
+{% block title %}
+출석체크
+{% endblock %}
+
+{% block content %}
+
+<h1 id="container_title">출석체크 설정</h1>
+<div class="container_wr">
+    <div class="local_ov01 local_ov">
+        <span class="btn_ov01">
+            <span class="ov_txt">전체</span>
+            <span class="ov_num">{{ total_count }}</span>
+        </span>
+    </div>
+
+    <form method="post" name="ftodo_list" id="ftodo_list" action="" onsubmit="return fattendance_list_submit(this);"
+          autocomplete="off">
+        <input type="hidden" name="sst" value="{{ request.state.sst }}">
+        <input type="hidden" name="sod" value="{{ request.state.sod }}">
+        <input type="hidden" name="sfl" value="{{ request.state.sfl }}">
+        <input type="hidden" name="stx" value="{{ request.state.stx }}">
+        <input type="hidden" name="page" value="{{ request.state.page }}">
+        <input type="hidden" name="token" value="">
+
+        <div class="tbl_head01 tbl_wrap">
+            <table>
+                <caption>출석부 설정</caption>
+                <thead>
+                <tr>
+                    <th scope="col">
+                        <label for="chkall" class="sound_only">전체 체크</label>
+                        <input type="checkbox" name="chkall" value="1" id="chkall" onclick="check_all(this.form)">
+                    </th>
+                    <th scope="col">출석부 제목</th>
+                    <th scope="col">시작 날짜</th>
+                    <th scope="col">종료 날짜</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for attendance in attendance_configs %}
+                <tr class="bg">
+                    <td class="td_chk">
+                        <label for="chk_{{ loop.index0 }}" class="sound_only">{{ attendance.title }} todo</label>
+                        <input type="checkbox" name="chk[]" value="{{ attendance.id }}" id="chk_{{ loop.index0 }}">
+                    </td>
+                    <td class="td_left">
+                        <p>
+                            <a href="/admin/attendance/{{ attendance.id }}">{{ attendance.title }}</a>
+                        </p>
+                    </td>
+                    <td class="td_datetime">
+                        {{ attendance.start_date }}
+                    </td>
+                    <td class="td_datetime">
+                        {{ attendance.end_date }}
+                    </td>
+
+                </tr>
+                {% endfor %}
+
+                {% if not attendance_configs %}
+                <tr>
+                    <td colspan="10">자료가 없습니다.</td>
+                </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="btn_fixed_top">
+            <input type="submit" name="act_button" onclick="document.pressed='delete'" value="선택삭제"
+                   class="btn btn_02">
+            <a href="/admin/attendance/create" class="btn btn_01">추가</a>
+        </div>
+    </form>
+
+    <div class="local_desc01 local_desc">
+        <p>안내 사항</p>
+    </div>
+
+    {{ paging|safe }}
+
+    <script>
+        function fattendance_list_submit(f) {
+            if (!is_checked("chk[]")) {
+                alert(document.pressed + " 하실 항목을 하나 이상 선택하세요.");
+                return false;
+            }
+
+            if (document.pressed == "delete") {
+                if (!confirm("선택한 자료를 정말 삭제하시겠습니까?")) {
+                    return false;
+                }
+
+                f.action = "/admin/attendance/delete";
+            }
+
+            f.token.value = generate_token();
+
+            return true;
+        }
+    </script>
+
+</div>
+
+{% endblock %}
