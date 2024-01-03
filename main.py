@@ -286,7 +286,7 @@ async def alert_exception_handler(request: Request, exc: AlertException):
     Returns:
         _TemplateResponse: 경고창 템플릿
     """
-    template = Jinja2Templates(directory=[TEMPLATES_DIR])
+    template = UserTemplates()
     return template.TemplateResponse(
         "alert.html", {"request": request, "errors": exc.detail, "url": exc.url}, status_code=exc.status_code
     )
@@ -303,7 +303,7 @@ async def alert_close_exception_handler(request: Request, exc: AlertCloseExcepti
     Returns:
         _TemplateResponse: 경고창 & 윈도우창 닫기 템플릿
     """
-    template = Jinja2Templates(directory=[TEMPLATES_DIR])
+    template = UserTemplates()
     return template.TemplateResponse(
         "alert_close.html", {"request": request, "errors": exc.detail}, status_code=exc.status_code
     )
