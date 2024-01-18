@@ -227,16 +227,6 @@ border:1px solid var(--primary) !important;
 #hd_define li a {display:inline-block;color:#919191}
 #hd_define li.active a {color:var(--primary)}
 
-#tnb .datetime{
-  color:var(--primary); 
-  float: left;
-  font-size: 1.25em;
-  line-height: 14px;
-  position: relative;
-  text-align: center;
-  margin: 15px 10px 15px 0;
-}
-
 #hd_qnb {float:right;text-align:right}
 #hd_qnb:after {display:block;visibility:hidden;clear:both;content:""}
 #hd_qnb li {float:left;font-size:1.083em;line-height:14px;border-right:1px solid #4a4a4a;position:relative;text-align:center;margin:15px 10px 15px 0;padding-right:10px}
